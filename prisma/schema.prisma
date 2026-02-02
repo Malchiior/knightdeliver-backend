@@ -1,0 +1,157 @@
+// KnightDeliver Database Schema
+// For use with Neon PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - UCF students
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique // Must be @knights.ucf.edu
+  passwordHash    String
+  firstName       String
+  lastName        String
+  phone           String?
+  isVerified      Boolean   @default(false)
+  isDeliverer     Boolean   @default(false)
+  delivererRating Float?
+  totalDeliveries Int       @default(0)
+  totalOrders     Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  ordersPlaced      Order[]    @relation("CustomerOrders")
+  ordersDelivered   Order[]    @relation("DelivererOrders")
+  ridesRequested    Ride[]     @relation("RiderRides")
+  ridesGiven        Ride[]     @relation("DriverRides")
+  ratingsGiven      Rating[]   @relation("RaterRatings")
+  ratingsReceived   Rating[]   @relation("RateeRatings")
+  savedLocations    SavedLocation[]
+}
+
+// Order model - Food delivery orders
+model Order {
+  id              String      @id @default(cuid())
+  status          OrderStatus @default(PENDING)
+  restaurant      String
+  orderImageUrl   String?
+  pickupLocation  String
+  dropoffBuilding String
+  dropoffRoom     String?
+  notes           String?
+  estimatedTip    String?
+  actualTip       Float?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  pickedUpAt      DateTime?
+  deliveredAt     DateTime?
+
+  // Relations
+  customerId      String
+  customer        User        @relation("CustomerOrders", fields: [customerId], references: [id])
+  delivererId     String?
+  deliverer       User?       @relation("DelivererOrders", fields: [delivererId], references: [id])
+  tracking        OrderTracking[]
+  rating          Rating?
+}
+
+// Order status tracking
+model OrderTracking {
+  id        String      @id @default(cuid())
+  status    OrderStatus
+  latitude  Float?
+  longitude Float?
+  note      String?
+  createdAt DateTime    @default(now())
+
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id])
+}
+
+// Campus Rides
+model Ride {
+  id              String     @id @default(cuid())
+  status          RideStatus @default(REQUESTED)
+  rideType        RideType   @default(SCOOTER)
+  pickupLocation  String
+  dropoffLocation String
+  estimatedTime   Int?       // minutes
+  suggestedTip    String?
+  actualTip       Float?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  completedAt     DateTime?
+
+  // Relations
+  riderId         String
+  rider           User       @relation("RiderRides", fields: [riderId], references: [id])
+  driverId        String?
+  driver          User?      @relation("DriverRides", fields: [driverId], references: [id])
+  rating          Rating?    @relation("RideRating")
+}
+
+// Ratings
+model Rating {
+  id        String   @id @default(cuid())
+  score     Int      // 1-5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  raterId   String
+  rater     User     @relation("RaterRatings", fields: [raterId], references: [id])
+  rateeId   String
+  ratee     User     @relation("RateeRatings", fields: [rateeId], references: [id])
+  
+  orderId   String?  @unique
+  order     Order?   @relation(fields: [orderId], references: [id])
+  
+  rideId    String?  @unique
+  ride      Ride?    @relation("RideRating", fields: [rideId], references: [id])
+}
+
+// Saved locations for quick access
+model SavedLocation {
+  id        String   @id @default(cuid())
+  name      String
+  building  String
+  room      String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+// Enums
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PICKING_UP
+  PICKED_UP
+  DELIVERING
+  DELIVERED
+  CANCELLED
+}
+
+enum RideStatus {
+  REQUESTED
+  ACCEPTED
+  DRIVER_ARRIVING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RideType {
+  SCOOTER
+  GOLF_CART
+  WALK_WITH
+}
