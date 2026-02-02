@@ -55,13 +55,10 @@ export const logger = winston.createLogger({
   ],
 });
 
-// Add file transports in production
-if (process.env.NODE_ENV === 'production') {
-  logger.add(new winston.transports.File({
-    filename: 'logs/error.log',
-    level: 'error',
-  }));
-  logger.add(new winston.transports.File({
-    filename: 'logs/combined.log',
-  }));
-}
+// Note: File logging disabled for cloud deployment
+// Railway/Render capture console output automatically
+// If you need file logging locally, uncomment below:
+// if (process.env.NODE_ENV !== 'production') {
+//   logger.add(new winston.transports.File({ filename: 'logs/error.log', level: 'error' }));
+//   logger.add(new winston.transports.File({ filename: 'logs/combined.log' }));
+// }
