@@ -1,7 +1,11 @@
 # KnightDeliver Backend Dockerfile
-FROM node:20-alpine AS builder
+# Using Debian-slim instead of Alpine for OpenSSL compatibility with Prisma
+FROM node:20-slim AS builder
 
 WORKDIR /app
+
+# Install OpenSSL (required by Prisma)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy package files and prisma schema (needed for postinstall)
 COPY package*.json ./
@@ -16,13 +20,16 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Generate Prisma client (ensure it's built)
+# Generate Prisma client (ensure it's built for the target platform)
 RUN npx prisma generate
 
 # Production stage
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
+
+# Install OpenSSL (required by Prisma at runtime)
+RUN apt-get update -y && apt-get install -y openssl wget && rm -rf /var/lib/apt/lists/*
 
 # Copy from builder
 COPY --from=builder /app/dist ./dist
@@ -31,8 +38,8 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/prisma ./prisma
 
 # Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+RUN groupadd -g 1001 nodejs && \
+    useradd -u 1001 -g nodejs nodejs
 
 USER nodejs
 
