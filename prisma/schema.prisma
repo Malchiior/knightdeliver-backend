@@ -22,6 +22,7 @@ model User {
   isAdmin         Boolean   @default(false)
   isDeliverer     Boolean   @default(false)
   chargerStatus   String    @default("none") // none, pending, approved, denied
+  profileImage    String?
   studentIdUrl    String?
   studentIdSubmittedAt DateTime?
   delivererRating Float?

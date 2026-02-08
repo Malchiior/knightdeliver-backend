@@ -110,6 +110,7 @@ router.get('/users', requireAdmin, async (req: Request, res: Response) => {
         isAdmin: true,
         isDeliverer: true,
         chargerStatus: true,
+        profileImage: true,
         studentIdUrl: true,
         studentIdSubmittedAt: true,
         delivererRating: true,
