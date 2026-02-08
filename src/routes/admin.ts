@@ -411,4 +411,19 @@ router.get('/export/orders', requireAdmin, async (req: Request, res: Response) =
   }
 });
 
+// Bug reports — no auth required, anyone can submit
+const bugReports: { description: string; userEmail: string; createdAt: string }[] = [];
+
+router.post('/bug-reports', async (req: Request, res: Response) => {
+  const { description, userEmail } = req.body;
+  if (!description) return res.status(400).json({ error: 'Description required' });
+  bugReports.push({ description, userEmail: userEmail || 'anonymous', createdAt: new Date().toISOString() });
+  logger.info(`🐛 Bug report from ${userEmail}: ${description}`);
+  res.json({ success: true });
+});
+
+router.get('/bug-reports', requireAdmin, async (req: Request, res: Response) => {
+  res.json({ reports: bugReports });
+});
+
 export default router;
