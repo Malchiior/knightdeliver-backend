@@ -18,8 +18,8 @@ const verificationCodes = new Map<string, { code: string; expiresAt: Date }>();
 // Validation schemas
 const registerSchema = z.object({
   email: z.string().email().refine(
-    (email) => email.endsWith('@knights.ucf.edu'),
-    { message: 'Must use a @knights.ucf.edu email' }
+    (email) => email.endsWith('@ucf.edu') || email.endsWith('@knights.ucf.edu'),
+    { message: 'Must use a @ucf.edu email' }
   ),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   name: z.string().min(1, 'Name is required'),
