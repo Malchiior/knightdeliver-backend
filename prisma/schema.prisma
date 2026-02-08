@@ -19,6 +19,7 @@ model User {
   lastName        String    @default("")
   phone           String?
   isVerified      Boolean   @default(false)
+  isAdmin         Boolean   @default(false)
   isDeliverer     Boolean   @default(false)
   delivererRating Float?
   totalDeliveries Int       @default(0)

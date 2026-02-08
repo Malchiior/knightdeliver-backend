@@ -157,6 +157,7 @@ router.post('/login', async (req, res, next) => {
         phone: user.phone,
         isVerified: user.isVerified,
         isDeliverer: user.isDeliverer,
+        isAdmin: user.isAdmin,
       },
       token,
     });

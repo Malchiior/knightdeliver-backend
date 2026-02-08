@@ -20,6 +20,7 @@ import deliveryRoutes from './routes/deliveries';
 import trackingRoutes from './routes/tracking';
 import ratingRoutes from './routes/ratings';
 import rideRoutes from './routes/rides';
+import adminRoutes from './routes/admin';
 
 // Load environment variables
 dotenv.config();
@@ -86,6 +87,7 @@ app.use('/api/deliveries', deliveryRoutes);
 app.use('/api/tracking', trackingRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/rides', rideRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling
 app.use(notFoundHandler);
