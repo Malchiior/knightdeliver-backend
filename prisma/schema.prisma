@@ -15,8 +15,8 @@ model User {
   id              String    @id @default(cuid())
   email           String    @unique // Must be @knights.ucf.edu
   passwordHash    String
-  firstName       String
-  lastName        String
+  firstName       String    @default("")
+  lastName        String    @default("")
   phone           String?
   isVerified      Boolean   @default(false)
   isDeliverer     Boolean   @default(false)
@@ -40,10 +40,10 @@ model User {
 model Order {
   id              String      @id @default(cuid())
   status          OrderStatus @default(PENDING)
-  restaurant      String
+  restaurant      String    @default("")
   orderImageUrl   String?
-  pickupLocation  String
-  dropoffBuilding String
+  pickupLocation  String    @default("")
+  dropoffBuilding String    @default("")
   dropoffRoom     String?
   notes           String?
   estimatedTip    String?
@@ -100,7 +100,7 @@ model Ride {
 // Ratings
 model Rating {
   id        String   @id @default(cuid())
-  score     Int      // 1-5
+  score     Int      @default(5) // 1-5
   comment   String?
   createdAt DateTime @default(now())
 
