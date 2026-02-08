@@ -199,6 +199,43 @@ router.get('/my-orders', authMiddleware, async (req, res, next) => {
   }
 });
 
+// Get available orders (public - for deliverers without auth for now)
+router.get('/available-public', async (req, res, next) => {
+  try {
+    const orders = await prisma.order.findMany({
+      where: { status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const formattedOrders = orders.map(order => {
+      const notes = order.notes || '';
+      const nameMatch = notes.match(/Name: (.+)/);
+      const phoneMatch = notes.match(/Phone: (.+)/);
+      const itemsMatch = notes.match(/Items: (.+)/);
+      const drinkMatch = notes.match(/Drink: (.+)/);
+      
+      return {
+        id: order.id,
+        customerName: nameMatch ? nameMatch[1].split('\n')[0] : 'Customer',
+        customerPhone: phoneMatch ? phoneMatch[1].split('\n')[0] : '',
+        restaurant: order.restaurant,
+        pickupLocation: order.pickupLocation,
+        dropoffBuilding: order.dropoffBuilding,
+        dropoffRoom: order.dropoffRoom,
+        items: itemsMatch ? itemsMatch[1].split('\n')[0] : '',
+        hasDrink: drinkMatch ? drinkMatch[1].trim().toLowerCase() === 'yes' : false,
+        estimatedTip: order.estimatedTip,
+        deliveryFee: (order as any).deliveryFee,
+        createdAt: order.createdAt,
+      };
+    });
+    
+    res.json({ orders: formattedOrders });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get single order (authenticated)
 router.get('/:id', authMiddleware, async (req, res, next) => {
   try {
@@ -348,43 +385,6 @@ router.post('/:id/status', authMiddleware, async (req, res, next) => {
     }
     
     res.json({ order });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get available orders (public - for deliverers without auth for now)
-router.get('/available-public', async (req, res, next) => {
-  try {
-    const orders = await prisma.order.findMany({
-      where: { status: 'PENDING' },
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    // Parse notes to extract customer info
-    const formattedOrders = orders.map(order => {
-      const notes = order.notes || '';
-      const nameMatch = notes.match(/Name: (.+)/);
-      const phoneMatch = notes.match(/Phone: (.+)/);
-      const itemsMatch = notes.match(/Items: (.+)/);
-      const drinkMatch = notes.match(/Drink: (.+)/);
-      
-      return {
-        id: order.id,
-        customerName: nameMatch ? nameMatch[1].split('\n')[0] : 'Customer',
-        customerPhone: phoneMatch ? phoneMatch[1].split('\n')[0] : '',
-        restaurant: order.restaurant,
-        pickupLocation: order.pickupLocation,
-        dropoffBuilding: order.dropoffBuilding,
-        dropoffRoom: order.dropoffRoom,
-        items: itemsMatch ? itemsMatch[1].split('\n')[0] : '',
-        hasDrink: drinkMatch ? drinkMatch[1].trim().toLowerCase() === 'yes' : false,
-        estimatedTip: order.estimatedTip,
-        createdAt: order.createdAt,
-      };
-    });
-    
-    res.json({ orders: formattedOrders });
   } catch (error) {
     next(error);
   }
