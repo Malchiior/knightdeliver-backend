@@ -262,6 +262,33 @@ router.post('/verify', async (req, res, next) => {
   }
 });
 
+// Resend verification code
+router.post('/resend-code', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.isVerified) return res.json({ message: 'Already verified' });
+
+    const code = generateVerificationCode();
+    verificationCodes.set(email.toLowerCase(), {
+      code,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    sendVerificationEmail(email, user.firstName, code).catch(err => {
+      logger.error('Failed to resend verification email:', err);
+    });
+
+    logger.info(`Verification code resent to ${email}`);
+    res.json({ message: 'Verification code sent!' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get current user
 router.get('/me', async (req, res, next) => {
   try {
