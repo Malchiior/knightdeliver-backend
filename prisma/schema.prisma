@@ -21,9 +21,13 @@ model User {
   isVerified      Boolean   @default(false)
   isAdmin         Boolean   @default(false)
   isDeliverer     Boolean   @default(false)
+  chargerStatus   String    @default("none") // none, pending, approved, denied
+  studentIdUrl    String?
+  studentIdSubmittedAt DateTime?
   delivererRating Float?
   totalDeliveries Int       @default(0)
   totalOrders     Int       @default(0)
+  totalEarnings   Float     @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -49,6 +53,8 @@ model Order {
   notes           String?
   estimatedTip    String?
   actualTip       Float?
+  deliveryFee     Float?
+  paymentMethod   String?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   pickedUpAt      DateTime?
@@ -129,6 +135,14 @@ model SavedLocation {
 
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+}
+
+// App settings (singleton)
+model AppSettings {
+  id              String   @id @default("settings")
+  maxChargers     Int      @default(50)
+  autoApprove     Boolean  @default(true) // auto-approve verified users as chargers
+  updatedAt       DateTime @updatedAt
 }
 
 // Enums

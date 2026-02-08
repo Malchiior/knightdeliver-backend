@@ -134,4 +134,75 @@ router.post('/rate', authMiddleware, async (req, res, next) => {
   }
 });
 
+// Apply to become a charger (submit student ID)
+router.post('/apply-charger', authMiddleware, async (req, res, next) => {
+  try {
+    const userId = (req as any).userId;
+    const { studentIdUrl } = req.body;
+
+    if (!studentIdUrl) {
+      return res.status(400).json({ error: 'Student ID image is required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (user.chargerStatus === 'approved' || user.isDeliverer) {
+      return res.status(400).json({ error: 'You are already an approved charger' });
+    }
+
+    if (user.chargerStatus === 'pending') {
+      return res.status(400).json({ error: 'Your application is already pending review' });
+    }
+
+    // Check auto-approve setting
+    const settings = await prisma.appSettings.findUnique({ where: { id: 'settings' } });
+    const currentChargers = await prisma.user.count({ where: { isDeliverer: true } });
+    const atCap = settings && currentChargers >= settings.maxChargers;
+
+    if (settings?.autoApprove && user.isVerified && !atCap) {
+      // Auto-approve verified users
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          studentIdUrl,
+          studentIdSubmittedAt: new Date(),
+          chargerStatus: 'approved',
+          isDeliverer: true,
+        },
+      });
+      return res.json({ status: 'approved', message: 'You are now a Charger! 🎉' });
+    }
+
+    // Manual review required
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        studentIdUrl,
+        studentIdSubmittedAt: new Date(),
+        chargerStatus: 'pending',
+      },
+    });
+
+    res.json({ status: 'pending', message: 'Application submitted! We\'ll review your ID shortly.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get charger application status
+router.get('/charger-status', authMiddleware, async (req, res, next) => {
+  try {
+    const userId = (req as any).userId;
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { chargerStatus: true, isDeliverer: true, isVerified: true },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
