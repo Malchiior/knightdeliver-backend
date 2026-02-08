@@ -289,6 +289,90 @@ router.post('/resend-code', async (req, res, next) => {
   }
 });
 
+// Forgot password — send reset code
+const resetCodes = new Map<string, { code: string; expiresAt: Date }>();
+
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+    if (!user) {
+      // Don't reveal if email exists
+      return res.json({ message: 'If that email exists, a reset code has been sent.' });
+    }
+
+    const code = generateVerificationCode();
+    resetCodes.set(email.toLowerCase(), {
+      code,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    });
+
+    // Send reset email
+    if (process.env.RESEND_API_KEY) {
+      const { Resend } = require('resend');
+      const resend = new Resend(process.env.RESEND_API_KEY);
+      await resend.emails.send({
+        from: 'KnightDeliver <noreply@knightdeliver.com>',
+        to: email.toLowerCase(),
+        subject: '🔑 Reset your KnightDeliver password',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: #FFC904; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+              <h1 style="color: #000; margin: 0;">⚔️ KnightDeliver</h1>
+            </div>
+            <div style="background: #1a1a1a; color: #fff; padding: 30px; border-radius: 0 0 10px 10px;">
+              <h2 style="color: #FFC904;">Password Reset</h2>
+              <p>Use this code to reset your password:</p>
+              <div style="background: #000; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0;">
+                <span style="font-size: 32px; font-weight: bold; color: #FFC904; letter-spacing: 8px;">${code}</span>
+              </div>
+              <p style="color: #888;">This code expires in 10 minutes.</p>
+            </div>
+          </div>
+        `,
+        text: `Your KnightDeliver password reset code is: ${code}. Expires in 10 minutes.`,
+      }).catch((err: any) => logger.error('Reset email error:', err));
+    } else {
+      logger.info(`[DEV] Reset code for ${email}: ${code}`);
+    }
+
+    res.json({ message: 'If that email exists, a reset code has been sent.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Reset password with code
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { email, code, newPassword } = req.body;
+    if (!email || !code || !newPassword) return res.status(400).json({ error: 'All fields required' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    const stored = resetCodes.get(email.toLowerCase());
+    if (!stored) return res.status(400).json({ error: 'No reset code found. Request a new one.' });
+    if (stored.expiresAt < new Date()) {
+      resetCodes.delete(email.toLowerCase());
+      return res.status(400).json({ error: 'Reset code expired. Request a new one.' });
+    }
+    if (stored.code !== code) return res.status(400).json({ error: 'Invalid reset code' });
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { email: email.toLowerCase() },
+      data: { passwordHash },
+    });
+
+    resetCodes.delete(email.toLowerCase());
+    logger.info(`Password reset for: ${email}`);
+    res.json({ message: 'Password reset successfully!' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Get current user
 router.get('/me', async (req, res, next) => {
   try {
